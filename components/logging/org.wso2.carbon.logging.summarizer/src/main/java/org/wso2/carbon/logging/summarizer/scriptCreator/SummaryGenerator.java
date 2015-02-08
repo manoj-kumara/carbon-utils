@@ -25,7 +25,9 @@ import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.Map;
 
 /*
@@ -44,12 +46,12 @@ import java.util.Map;
  * limitations under the License.
  */
 public class SummaryGenerator {
-	
+
 	private static final Log log = LogFactory.getLog(SummaryGenerator.class);
 
 	LoggingConfig config = LoggingConfigManager.loadLoggingConfiguration();
 	private DataPublisher dataPublisher = null;
-	
+
 	public void connectToBAM() throws SummarizerException, AgentException,
 			AuthenticationException, TransportException,
 			StreamDefinitionException, NoStreamDefinitionExistException {
@@ -65,11 +67,11 @@ public class SummaryGenerator {
 		try {
 			QueryGenerator queryGenerator = new QueryGenerator();
             Map<String, String> queryList = queryGenerator.createQuery();
-			
+
 			for (Map.Entry<String, String> entry : queryList.entrySet()) {
 				HiveExecutorService hiveExecutorService = SummaryDataHolder
 						.getInstance().getHiveExecutorService();
-				log.info("Executing hive Query for CF : "+entry.getKey());
+				log.info("Executing hive Query for CF : " + entry.getKey());
 				hiveExecutorService.execute(null, entry.getValue());
             }
 
@@ -91,29 +93,31 @@ public class SummaryGenerator {
 							truststorePath);
 					System.setProperty("javax.net.ssl.trustStorePassword",
 							"wso2carbon");
-					if(dataPublisher == null) {
+					if (dataPublisher == null) {
 						dataPublisher = new DataPublisher(
 								config.getPublisherURL(),
 								config.getPublisherUser(),
 								config.getPublisherPassword());
 					}
-                    String rectifiedCFName = colFamilyName.replace("_", ".");
-                    try {
-                        //deleting the stream
-						log.info("Deleting stream: " + rectifiedCFName);
-						dataPublisher.deleteStream(rectifiedCFName, "1.0.0");
-                        //deleting the column family
-                        columnFamilyHandler.deleteColumnFamily(colFamilyName);
-                    } catch (AgentException e) {
+					String rectifiedCFName = colFamilyName.replace("_", ".");
+					try {
+						//deleting the stream
+						if (isValidCFToDelete(colFamilyName)) {
+							log.info("Deleting stream: " + rectifiedCFName);
+							dataPublisher.deleteStream(rectifiedCFName, "1.0.0");
+							//deleting the column family
+							columnFamilyHandler.deleteColumnFamily(colFamilyName);
+						}
+					} catch (AgentException e) {
 						log.warn("Unable to delete stream definition : "
 								+ rectifiedCFName);
 					} catch (Exception e) {
-                        log.warn("error while deleting the stream or column family. " +
-                                "But continuing file restructuring....");
-                    }
+						log.warn("error while deleting the stream or column family. " +
+								"But continuing file restructuring....");
+					}
 
 				}
-			
+
 			}
 
 			log.info("Summary Generation completed at "
@@ -121,7 +125,7 @@ public class SummaryGenerator {
 			long timeTaken = System.currentTimeMillis() - startTime;
 			log.info("Time taken for Summary Generation: " + timeTaken / 1000
 					+ "s");
-        } catch (HiveExecutionException e) {
+		} catch (HiveExecutionException e) {
 			log.error("Error while Daily Log Summary Generation ", e);
 			throw new SummarizerException(
 					"Error while Daily Log Summary Generation ", e);
@@ -132,4 +136,24 @@ public class SummaryGenerator {
 		}
 	}
 
+	private static boolean isValidCFToDelete(String cfName) {
+		Calendar cal = new GregorianCalendar();
+
+		int year = cal.get(Calendar.YEAR);
+		int month = cal.get(cal.MONTH) + 1;
+		int day = cal.get(cal.DAY_OF_MONTH);
+		String todayRegex = "^log_\\d_[A-Z]+_" + Integer.toString(year) + "_"
+				+ String.format("%02d", month) + "_"
+				+ String.format("%02d", day);
+		String yesterdayRegex = "^log_\\d_[A-Z]+_" + Integer.toString(year)
+				+ "_" + String.format("%02d", month) + "_"
+				+ String.format("%02d", (day - 1));
+		boolean isTodayCF = cfName.matches(todayRegex);
+		boolean isYesterdaysCF = cfName.matches(yesterdayRegex);
+		if (!isTodayCF && !isYesterdaysCF) {
+			return true;
+		} else {
+			return false;
+		}
+	}
 }

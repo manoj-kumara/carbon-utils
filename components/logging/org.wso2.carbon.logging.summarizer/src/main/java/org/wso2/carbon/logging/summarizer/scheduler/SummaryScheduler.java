@@ -29,11 +29,11 @@ public class SummaryScheduler {
 
             Map<String, String> properties = new HashMap<String, String>();
 
-            properties.put(SummarizingConstants.TASK_TENANT_ID_KEY, String.valueOf(CarbonContext.getCurrentContext().getTenantId()));
+            properties.put(SummarizingConstants.TASK_TENANT_ID_KEY, String.valueOf(CarbonContext.getThreadLocalCarbonContext().getTenantId()));
 
             info.setProperties(properties);
 
-            int tenantId = CarbonContext.getCurrentContext().getTenantId();
+            int tenantId = CarbonContext.getThreadLocalCarbonContext().getTenantId();
             try {
                 SummaryDataHolder.getTaskManager().registerTask(info);
                 SummaryDataHolder.getTaskManager().rescheduleTask(info.getName());

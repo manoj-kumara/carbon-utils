@@ -155,6 +155,8 @@ public class ColumnFamilyHandler {
                 if(matcher.matches()) {
                     selectedColumnFamilies.add(columnFamilyName);
                 }
+            } else {
+                selectedColumnFamilies.add(columnFamilyName);
             }
         }
         return selectedColumnFamilies;

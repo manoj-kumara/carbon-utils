@@ -7,6 +7,8 @@ import org.wso2.carbon.analytics.hive.service.HiveExecutorService;
 import org.wso2.carbon.logging.summarizer.scheduler.SummaryScheduler;
 import org.wso2.carbon.logging.summarizer.utils.LoggingConfig;
 import org.wso2.carbon.logging.summarizer.utils.LoggingConfigManager;
+import org.wso2.carbon.logging.summarizer.utils.SummarizingConstants;
+import org.wso2.carbon.ntask.common.TaskException;
 import org.wso2.carbon.ntask.core.service.TaskService;
 import org.wso2.carbon.registry.core.exceptions.RegistryException;
 import org.wso2.carbon.utils.ConfigurationContextService;
@@ -34,6 +36,12 @@ public class SummarySchedulerComponent {
     protected void activate(ComponentContext ctx) {
         if (log.isDebugEnabled()) {
             log.debug("Starting SummarySchedulerComponent");
+        }
+
+        try {
+            SummaryDataHolder.getInstance().getTask().registerTaskType(SummarizingConstants.TASK_NAME);
+        } catch (TaskException e) {
+            throw new RuntimeException(e);
         }
 
         LoggingConfig config = LoggingConfigManager.loadLoggingConfiguration();
